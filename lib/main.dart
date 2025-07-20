@@ -13,6 +13,10 @@ import 'package:moger_web/scr/presentation/views/home/home.dart';
 import 'package:moger_web/scr/presentation/views/home/search/real_state_elements.dart/real_states_body_page.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:my_widgets/real_state/models/utilisateur.dart';
+import 'package:my_widgets/widgets/custom_show_dialog.dart';
+import 'package:my_widgets/widgets/warning.dart';
+
+import 'scr/configs/app/export.dart';
 
 const phoneScallerFactor = 1.0;
 void main() async {
@@ -29,8 +33,8 @@ void main() async {
       await Utilisateur.getUser(user.phoneNumber!.substring(4));
     }
   }
-
   initialControllers();
+  await getLocations();
   runApp(GetMaterialApp(
       debugShowCheckedModeBanner: false,
       scrollBehavior: MyBehavior(),
@@ -74,4 +78,50 @@ class UnknownRoutePage extends StatelessWidget {
       ),
     );
   }
+ 
 }
+
+   getLocations() async {
+    try {
+      var q = await DB
+          .firestore(Collections.utils)
+          .doc(Collections.localites)
+          .get(GetOptions(source: Source.server));
+      Constants.localites = convertData(q.data()!);
+
+
+ 
+    } on Exception {
+      Custom.showDialog(WarningWidget(
+          confirm: () async {
+            Get.back();
+            getLocations();
+          },
+          message:
+              "Une erreur s'est produite. Vérifiez votre connexion internet et réessayez svp !"));
+      return;
+      // TODO
+    }
+  }
+  
+Map<String, Map<String, List<String>>> convertData(Map<String, dynamic> data) {
+  try {
+    return data.map((key, value) {
+      if (value is Map<String, dynamic>) {
+        return MapEntry(key, value.map((innerKey, innerValue) {
+          if (innerValue is List<dynamic>) {
+            return MapEntry(innerKey, List<String>.from(innerValue));
+          } else {
+            throw Exception("Invalid innerValue type");
+          }
+        }));
+      } else {
+        throw Exception("Invalid value type");
+      }
+    });
+  } catch (e) {
+    print("Error converting data: $e");
+    return {};
+  }
+}
+
